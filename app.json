@@ -85,7 +85,9 @@
         "android.permission.VIBRATE",
         "android.permission.USE_FULL_SCREEN_INTENT",
         "com.google.android.c2dm.permission.RECEIVE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "usesCleartextTraffic": true,
       "networkSecurityConfig": {

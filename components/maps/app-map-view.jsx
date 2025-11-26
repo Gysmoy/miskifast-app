@@ -1,6 +1,16 @@
-import isHuawei from '@/hooks/is-huawei'
-import HMSMap from '@hmscore/react-native-hms-map';
+import { Platform } from 'react-native';
+import isHuawei from '@/hooks/is-huawei';
 import MapView from 'react-native-maps';
-const Map = isHuawei() ? HMSMap : MapView;
 
-export default Map
+let HMSMap = null;
+if (Platform.OS === 'android' && isHuawei()) {
+    try {
+        HMSMap = require('@hmscore/react-native-hms-map').HMSMap;
+    } catch (e) {
+        console.warn('HMS Maps not available, falling back to Google Maps');
+    }
+}
+
+const Map = HMSMap || MapView;
+
+export default Map;
