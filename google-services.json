@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1014511309004",
+    "project_id": "sode-world",
+    "storage_bucket": "sode-world.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1014511309004:android:e5410a1cb644450e3c3269",
+        "android_client_info": {
+          "package_name": "com.sode.miskifast"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1014511309004-op7qcp458v1kpf91gq8f674esd03to83.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD42wUnW7k7CEvTUp4Phyh6L4tXrondn_U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1014511309004-op7qcp458v1kpf91gq8f674esd03to83.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
