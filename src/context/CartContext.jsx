@@ -99,7 +99,6 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
 
   const [lastPendingOrder, setLastPendingOrder] = useState(null)
   const [availableOrders, setAvailableOrders] = useState([])
-  const [wsActive, setWsActive] = useState(false)
 
   // Socket ref and connection moved inside CartProvider
   const socketRef = useRef(null)
@@ -274,12 +273,10 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
       })
 
       socket.on('filters_registered', ({ filters }) => {
-        setWsActive(true)
         console.log('✅ Filtros actualizados', filters)
       })
 
       socket.on('disconnect', () => {
-        setWsActive(false)
         console.log('🔴 Desconectado de', socket.io.uri)
       })
 
@@ -359,7 +356,7 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
               <>
                 {
                   appMode == 'Delivery'
-                    ? <DeliveringOrder {...lastPendingOrder} statuses={statuses} wsActive={wsActive} socketRef={socketRef} />
+                    ? <DeliveringOrder {...lastPendingOrder} statuses={statuses} />
                     : <PendingOrder {...lastPendingOrder} statuses={statuses} />
                 }
               </>

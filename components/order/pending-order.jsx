@@ -214,8 +214,13 @@ const PendingOrder = ({ created_at, restaurant, status, delivery_latitude, deliv
                         />
                     </View>
                     <View>
-                        <AppText weight='Bold' style={{ fontSize: 13 }}>{status?.name}</AppText>
-                        <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{status?.description}</AppText>
+                        {status.id == 'f7b3f073-c8bf-49c9-ba6d-fcdfe82395dc' ? <>
+                            <AppText weight='Bold' style={{ fontSize: 13 }}>{delivery_status?.name}</AppText>
+                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{delivery_status?.description}</AppText>
+                        </> : <>
+                            <AppText weight='Bold' style={{ fontSize: 13 }}>{status?.name}</AppText>
+                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{status?.description}</AppText>
+                        </>}
                     </View>
                 </View>
 

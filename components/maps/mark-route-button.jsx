@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { TouchableOpacity } from "react-native"
 import AppText from "../app-text"
 
-const MarkRouteButton = ({onPress, children}) => {
+const MarkRouteButton = ({ icon = "analytics-outline", onPress, children }) => {
     return <TouchableOpacity style={{
         backgroundColor: '#FF4D4F',
         position: 'absolute',
@@ -16,8 +16,8 @@ const MarkRouteButton = ({onPress, children}) => {
         alignItems: 'center',
         gap: 6
     }}
-    onPress={onPress}>
-        <Ionicons name="analytics-outline" size={16} color='#ffffff' />
+        onPress={onPress}>
+        <Ionicons name={icon} size={16} color='#ffffff' />
         <AppText style={{ fontSize: 14, color: '#ffffff', textTransform: 'uppercase' }}>{children}</AppText>
     </TouchableOpacity>
 }

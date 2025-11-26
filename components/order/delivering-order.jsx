@@ -20,7 +20,7 @@ const gMapsRest = new GMapsRest()
 const ordersRest = new OrdersRest()
 const eventsRest = new EventsRest()
 
-const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery_latitude, delivery_longitude, delivery_status, client, details, statuses, wsActive, socketRef }) => {
+const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery_latitude, delivery_longitude, delivery_status, client, details, statuses }) => {
     const [mainRoute, setMainRoute] = useState([]);
     const [altRoutes, setAltRoutes] = useState([]);
     const [expanded, setExpanded] = useState(false);
@@ -151,17 +151,6 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
         }).start();
     }, [expanded]);
 
-    useEffect(() => {
-        if (!wsActive) return
-        const socket = socketRef.current
-        socket.on('something', (some) => {
-            console.log(some)
-        })
-        return () => {
-            socket.off()
-        }
-    }, [wsActive])
-
     return (
         <View style={{ flex: 1 }}>
             {/* Map background */}
@@ -261,6 +250,50 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                         Marcar ruta al cliente
                     </MarkRouteButton>
                 }
+                {
+                    delivery_status.id == 'a0618dce-61c4-46b1-813e-338332d2d5de' &&
+                    <View style={{
+                        position: 'absolute',
+                        borderRadius: 12,
+                        top: -54,
+                        left: '50%',
+                        transform: [{ translateX: '-50%' }],
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6
+                    }}>
+                        <TouchableOpacity style={{
+                            backgroundColor: '#FF4D4F',
+                            borderWidth: 1,
+                            borderColor: '#FF4D4F',
+                            paddingVertical: 12,
+                            paddingHorizontal: 24,
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6
+                        }}
+                            onPress={() => onDeliveryStatusChange('a0618dce-62e9-4720-8e1f-10f3208c357e')}>
+                            <Ionicons name='cube' size={16} color='#ffffff' />
+                            <AppText style={{ fontSize: 14, color: '#ffffff', textTransform: 'uppercase' }}>Entregar</AppText>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{
+                            backgroundColor: '#ffffff',
+                            borderWidth: 1,
+                            borderColor: '#FF4D4F',
+                            paddingVertical: 12,
+                            paddingHorizontal: 24,
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6
+                        }}
+                            onPress={() => onDeliveryStatusChange('a0618dce-63fc-4e31-8a53-c6dd39ed54d3')}>
+                            <Ionicons name='close' size={16} color='#FF4D4F' />
+                            <AppText style={{ fontSize: 14, color: '#FF4D4F', textTransform: 'uppercase' }}>Cancelar</AppText>
+                        </TouchableOpacity>
+                    </View>
+                }
                 <TouchableOpacity
                     style={{ alignSelf: 'center' }}
                     onPress={() => setExpanded(!expanded)}
@@ -317,8 +350,13 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                         />
                     </View>
                     <View>
-                        <AppText weight='Bold' style={{ fontSize: 13 }}>{status?.name}</AppText>
-                        <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{status?.description}</AppText>
+                        {status.id == 'f7b3f073-c8bf-49c9-ba6d-fcdfe82395dc' ? <>
+                            <AppText weight='Bold' style={{ fontSize: 13 }}>{delivery_status?.name}</AppText>
+                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{delivery_status?.description}</AppText>
+                        </> : <>
+                            <AppText weight='Bold' style={{ fontSize: 13 }}>{status?.name}</AppText>
+                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{status?.description}</AppText>
+                        </>}
                     </View>
                 </View>
 
