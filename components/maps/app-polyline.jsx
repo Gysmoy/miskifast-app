@@ -1,7 +1,16 @@
+import { Platform } from 'react-native';
 import isHuawei from "@/hooks/is-huawei"
 import { Polyline } from "react-native-maps";
-import { HMSPolyline } from '@hmscore/react-native-hms-map';
 
-const AppPolyline = isHuawei() ? HMSPolyline : Polyline
+let HMSPolyline = null;
+// if (isHuawei()) {
+//     try {
+//         HMSPolyline = require('@hmscore/react-native-hms-map').HMSPolyline;
+//     } catch (e) {
+//         console.warn('HMS Polyline not available, falling back to Google Maps Polyline');
+//     }
+// }
 
-export default AppPolyline
+const AppPolyline = HMSPolyline || Polyline;
+
+export default AppPolyline;
