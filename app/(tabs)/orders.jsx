@@ -91,7 +91,7 @@ export default function OrdersScreen() {
             >
                 <Ionicons name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <AppText style={{ fontSize: 17, color: '#181C2E' }}>Mis pedidos</AppText>
+            <AppText style={{ fontSize: 17, color: '#181C2E' }}>Mis favoritos</AppText>
         </View>
         <ScrollView
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, gap: 24 }}

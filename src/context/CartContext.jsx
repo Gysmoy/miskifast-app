@@ -18,6 +18,7 @@ import DeliveringOrder from "@/components/order/delivering-order"
 import { io } from 'socket.io-client'
 import AuthRest from '../data/AuthRest';
 import { router } from 'expo-router';
+import { Audio } from "expo-av";
 
 const authRest = new AuthRest()
 const categoriesRest = new CategoriesRest();
@@ -99,6 +100,34 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
 
   const [lastPendingOrder, setLastPendingOrder] = useState(null)
   const [availableOrders, setAvailableOrders] = useState([])
+  const [deliveryLocation, setDeliveryLocation] = useState(null)
+
+  const orderCreatedSound = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSound() {
+      try {
+        const { sound } = await Audio.Sound.createAsync(require('@/assets/sounds/order-accepted.mp3'));
+
+        if (isMounted) {
+          orderCreatedSound.current = sound;
+        }
+      } catch (err) {
+        console.log("Error loading sound:", err);
+      }
+    }
+
+    loadSound();
+
+    return () => {
+      isMounted = false;
+      if (orderCreatedSound.current) {
+        orderCreatedSound.current.unloadAsync();
+      }
+    };
+  }, []);
 
   // Socket ref and connection moved inside CartProvider
   const socketRef = useRef(null)
@@ -284,6 +313,12 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
 
       socket.on('order.created', (order) => setLastPendingOrder(order))
       socket.on('order.updated', (order) => setLastPendingOrder(order))
+      socket.on('delivery_location', (location) => setDeliveryLocation(location));
+      socket.on('order.available', (order) => {
+        if (orderCreatedSound.current) orderCreatedSound.current.replayAsync()
+        setAvailableOrders(prev => [...prev, order])
+      })
+      socket.on('order.unavailable', (order) => setAvailableOrders(prev => prev.filter(o => o.id !== order.id)))
     }
 
     return () => {
@@ -292,6 +327,7 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
         socketRef.current.disconnect()
         socketRef.current = null
         setLastPendingOrder(null)
+        setDeliveryLocation(null)
       }
     }
   }, [isAuthenticated, session?.id, appMode])
@@ -303,9 +339,13 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
 
   useEffect(() => {
     if (!appMode) return
-    console.log('Contect effect:', appMode)
     SecureStore.setItemAsync('app-mode', appMode)
   }, [appMode])
+
+  useEffect(() => {
+    if (lastPendingOrder) return
+    setDeliveryLocation(null)
+  }, [lastPendingOrder])
 
   useEffect(() => {
     SecureStore.getItemAsync('app-mode')
@@ -329,7 +369,7 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
     loadIndex,
     session, setSession,
     setSelectedItem,
-    lastPendingOrder,
+    lastPendingOrder, setLastPendingOrder,
     hasRole,
     appMode, setAppMode,
     setIsAuthenticated,
@@ -356,8 +396,8 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
               <>
                 {
                   appMode == 'Delivery'
-                    ? <DeliveringOrder {...lastPendingOrder} statuses={statuses} />
-                    : <PendingOrder {...lastPendingOrder} statuses={statuses} />
+                    ? <DeliveringOrder {...lastPendingOrder} setLastPendingOrder={setLastPendingOrder} statuses={statuses} />
+                    : <PendingOrder {...lastPendingOrder} setLastPendingOrder={setLastPendingOrder} statuses={statuses} deliveryLocation={deliveryLocation} />
                 }
               </>
               : children

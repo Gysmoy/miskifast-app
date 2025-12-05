@@ -3,7 +3,7 @@ import AuthButton from "../../components/auth/auth-button";
 import AppText from "../../components/app-text";
 import { router, useLocalSearchParams } from "expo-router";
 
-import image from '@/assets/images/order_completed.png'
+import image from '@/assets/images/order-completed.png'
 
 export default function ThanksScreen() {
     const { id } = useLocalSearchParams();

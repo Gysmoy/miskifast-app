@@ -150,15 +150,15 @@ export default function ProfileScreen() {
 
         <MenuContainer>
           <MenuItem icon='cart-outline' color='#369BFF' onPress={() => router.push('/cart')}>Mi carrito</MenuItem>
-          <MenuItem icon='time-outline' color='#FFAA2A'>Historial de pedidos</MenuItem>
+          <MenuItem icon='time-outline' color='#FFAA2A' onPress={() => router.push('/(tabs)/orders')}>Historial de pedidos</MenuItem>
           <MenuItem icon='heart-outline' color='#B33DFB' onPress={() => router.push('/(tabs)/fav')}>Favoritos</MenuItem>
         </MenuContainer>
 
-        <MenuContainer>
+        {/* <MenuContainer>
           <MenuItem icon='help-circle-outline' color='#FB6D3A'>Preguntas Frecuentes</MenuItem>
           <MenuItem icon='star-outline' color='#2AE1E1'>Reseñas de Usuario</MenuItem>
           <MenuItem icon='settings-outline' color='#413DFB'>Configuración</MenuItem>
-        </MenuContainer>
+        </MenuContainer> */}
 
         <MenuContainer>
           <MenuItem icon='log-out-outline' color='#FB4A59' onPress={onLogoutClicked}>Cerrar Sesión</MenuItem>

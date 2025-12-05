@@ -7,7 +7,7 @@ class EventsRest {
             filters = filters || {};
             filters.environment = APP_ENV;
 
-            const res = await Fetch(`${EVENTS_URL}/emit`, {
+            const { status, result } = await Fetch(`${EVENTS_URL}/emit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -20,7 +20,7 @@ class EventsRest {
                 })
             });
 
-            if (!res.ok) throw new Error('Ocurrió un error al notificar al cliente: ' + JSON.stringify(res));
+            if (!status) throw new Error('Ocurrió un error al notificar al cliente: ' + JSON.stringify(result));
             return true;
         } catch (th) {
             console.error(th.message);

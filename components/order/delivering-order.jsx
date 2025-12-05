@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import { View, Animated, Dimensions, TouchableOpacity, Linking } from "react-native"
-import MapView, { Polyline } from "react-native-maps";
+import { View, Animated, Dimensions, TouchableOpacity, Linking, Modal, TextInput } from "react-native"
 import AppText from "../app-text"
 import { Image } from "react-native"
 import { APP_URL, STORAGE_URL } from "@/constants/settings"
@@ -15,18 +14,57 @@ import EventsRest from '@/src/data/events-rest';
 import * as Location from 'expo-location';
 import AppPolyline from "../maps/app-polyline";
 import AppMapView from "@/components/maps/app-map-view"
+import AuthButton from "../auth/auth-button"
+import { Audio } from "expo-av";
+import OverlayOrder from "./overlay-order"
+
+import orderDoneImage from '@/assets/images/order-done.gif'
+import orderCancelledImage from '@/assets/images/order-cancelled.gif'
+
+import restaurantMarker from '@/assets/images/restaurant-marker.png'
+import clientMarker from '@/assets/images/client-marker.png'
+import deliveryMarker from '@/assets/images/delivery-marker.png'
 
 const gMapsRest = new GMapsRest()
 const ordersRest = new OrdersRest()
 const eventsRest = new EventsRest()
 
-const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery_latitude, delivery_longitude, delivery_status, client, details, statuses }) => {
-    const [mainRoute, setMainRoute] = useState([]);
-    const [altRoutes, setAltRoutes] = useState([]);
+const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, status, delivery_latitude, delivery_longitude, delivery_status_id, delivery_status, client, details, statuses, delivery_restaurant_route, delivery_client_route, payment_method, payment_method_note, rejected_reason }) => {
     const [expanded, setExpanded] = useState(false);
     const bannerAnim = useRef(new Animated.Value(0)).current;
     const locationIntervalRef = useRef(null);
     const [userLocation, setUserLocation] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+
+    const orderReadySound = useRef(null);
+
+    // Cargar el sonido al montar
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadSound() {
+            try {
+                const { sound } = await Audio.Sound.createAsync(require('@/assets/sounds/order-ready.mp3'));
+
+                if (isMounted) {
+                    orderReadySound.current = sound;
+                }
+            } catch (err) {
+                console.log("Error loading sound:", err);
+            }
+        }
+
+        loadSound();
+
+        return () => {
+            isMounted = false;
+            if (orderReadySound.current) {
+                orderReadySound.current.unloadAsync();
+            }
+        };
+    }, []);
 
     const statusImage = `${STORAGE_URL}/status/${status?.image}`
 
@@ -37,10 +75,22 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
         return currentStatus && stepStatus.order <= currentStatus.order;
     };
 
-    const onDeliveryStatusChange = async (statusId) => {
-        const result = await ordersRest.deliveryStatus(orderId, statusId);
+    const onDeliveryStatusChange = async (deliveryStatusId, routeData = null, rejectedReason = null) => {
+        const result = await ordersRest.deliveryStatus({
+            orderId,
+            deliveryStatusId,
+            routeData: routeData ?? undefined,
+            rejected_reason: rejectedReason ?? undefined
+        });
         if (!result) return;
     }
+
+    // Play sound when status_id becomes 'f0a538f0-8aef-4ca7-80d1-297ab6c58279'
+    useEffect(() => {
+        if (status_id === "f0a538f0-8aef-4ca7-80d1-297ab6c58279") {
+            if (orderReadySound.current) orderReadySound.current.replayAsync()
+        }
+    }, [status_id]);
 
     // Request location permission and start watching position
     useEffect(() => {
@@ -58,6 +108,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
     // Start sending location every 5s if delivery_status.id is one of the specified ones
     useEffect(() => {
         const targetStatusIds = [
+            'a0618dce-5d1b-4fae-a0bb-735d5c85270b',
             'a0618dce-5e6f-479c-af94-98a36ef6a6d6',
             'a0618dce-5fe8-4aa8-92c4-1797f9bc5618',
             'a0618dce-61c4-46b1-813e-338332d2d5de'
@@ -78,7 +129,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                 } catch (err) {
                     console.warn('Error sending location:', err);
                 }
-            }, 5000);
+            }, 2500);
         } else {
             if (locationIntervalRef.current) {
                 clearInterval(locationIntervalRef.current);
@@ -97,59 +148,89 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
     }, [delivery_status?.id]);
 
     useEffect(() => {
-        const fetchRoute = async () => {
-            try {
-                let origin;
-                if (delivery_status?.id === 'a0618dce-5e6f-479c-af94-98a36ef6a6d6' && userLocation) {
-                    origin = userLocation;
-                } else {
-                    origin = {
-                        latitude: restaurant.latitude,
-                        longitude: restaurant.longitude
-                    };
-                }
-                const routes = await gMapsRest.routes(
-                    origin,
-                    {
-                        latitude: delivery_latitude,
-                        longitude: delivery_longitude
-                    }
-                );
-
-                if (!routes || routes.length === 0) return;
-
-                // Principal
-                const mainPoly = decodePolyline(routes[0].overview_polyline.points);
-                setMainRoute(mainPoly);
-
-                // Alternativas
-                const alts = routes.slice(1).map(r =>
-                    decodePolyline(r.overview_polyline.points)
-                );
-                setAltRoutes(alts);
-
-            } catch (e) {
-                console.log("Error cargando ruta:", e);
-            }
-        };
-
-        if (
-            restaurant &&
-            delivery_latitude &&
-            delivery_longitude &&
-            (status?.id === 'f7b3f073-c8bf-49c9-ba6d-fcdfe82395dc' || (delivery_status?.id === 'a0618dce-5e6f-479c-af94-98a36ef6a6d6' && userLocation))
-        ) {
-            fetchRoute();
-        }
-    }, [restaurant, delivery_latitude, delivery_longitude, status, delivery_status?.id, userLocation]);
-
-    useEffect(() => {
         Animated.timing(bannerAnim, {
             toValue: expanded ? 1 : 0,
             duration: 250,
             useNativeDriver: false
         }).start();
     }, [expanded]);
+
+    const handleMarkRouteToRestaurant = async () => {
+        if (!userLocation || !restaurant) return;
+        setIsLoading(true);
+        try {
+            const routes = await gMapsRest.routes(
+                userLocation,
+                { latitude: restaurant.latitude, longitude: restaurant.longitude }
+            );
+            if (!routes || routes.length === 0) return;
+            const routeJson = {
+                origin: userLocation,
+                destination: { latitude: restaurant.latitude, longitude: restaurant.longitude },
+                polyline: decodePolyline(routes[0].overview_polyline.points),
+                distance: routes[0].legs[0].distance,
+                duration: routes[0].legs[0].duration
+            };
+            await onDeliveryStatusChange('a0618dce-5e6f-479c-af94-98a36ef6a6d6', routeJson);
+        } catch (e) {
+            console.warn("Error al obtener ruta al restaurante:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMarkRouteToClient = async () => {
+        if (!userLocation || !restaurant) return;
+        setIsLoading(true);
+        try {
+            const routes = await gMapsRest.routes(
+                userLocation,
+                { latitude: delivery_latitude, longitude: delivery_longitude }
+            );
+            if (!routes || routes.length === 0) return;
+            const routeJson = {
+                origin: userLocation,
+                destination: { latitude: delivery_latitude, longitude: delivery_longitude },
+                polyline: decodePolyline(routes[0].overview_polyline.points),
+                distance: routes[0].legs[0].distance,
+                duration: routes[0].legs[0].duration
+            };
+            await onDeliveryStatusChange('a0618dce-61c4-46b1-813e-338332d2d5de', routeJson);
+        } catch (e) {
+            console.warn("Error al obtener ruta al cliente:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCancelPress = () => {
+        setShowCancelModal(true);
+    };
+
+    const handleCancelConfirm = async () => {
+        if (!cancelReason.trim()) return;
+        setShowCancelModal(false);
+        await onDeliveryStatusChange('a0618dce-63fc-4e31-8a53-c6dd39ed54d3', null, cancelReason);
+        setCancelReason('');
+    };
+
+    const handleCancelClose = () => {
+        setShowCancelModal(false);
+        setCancelReason('');
+    };
+
+    if (delivery_status_id == 'a0618dce-62e9-4720-8e1f-10f3208c357e') return <OverlayOrder
+        image={orderDoneImage}
+        title='¡Pedido entregado!'
+        description={'Gracias por tu servicio\n¡Excelente trabajo!'}
+        countDown={5}
+    />
+    if (delivery_status_id === 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3') return <OverlayOrder
+        image={orderCancelledImage}
+        title='Pedido cancelado'
+        description={delivery_status.description}
+        specification={rejected_reason}
+    />
 
     return (
         <View style={{ flex: 1 }}>
@@ -170,7 +251,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                     longitude={restaurant.longitude}
                     title={restaurant.name}
                     color='#FF4D4F'
-                    icon='restaurant'
+                    icon={restaurantMarker}
                 />}
 
                 {/* Delivery (client) marker */}
@@ -179,7 +260,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                     longitude={delivery_longitude}
                     title='Entrega'
                     color='#10c469'
-                    icon='home'
+                    icon={clientMarker}
                 />}
 
                 {/* Delivery (delivery) marker */}
@@ -188,25 +269,22 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                     longitude={userLocation.longitude}
                     title='Entrega'
                     color='#71b6f9'
-                    icon='bycicle'
+                    icon={deliveryMarker}
                 />}
 
-                {/* RUTAS ALTERNATIVAS */}
-                {altRoutes.length > 0 &&
-                    altRoutes.map((coords, i) => (
-                        <AppPolyline
-                            key={`alt-${i}`}
-                            coordinates={coords}
-                            strokeColor="rgba(255, 77, 79, 0.35)"   // rojito suave
-                            strokeWidth={3}
-                        />
-                    ))
-                }
-
-                {/* RUTA PRINCIPAL */}
-                {mainRoute.length > 0 && (
+                {/* RUTA DELIVERY-RESTAURANTE */}
+                {delivery_restaurant_route?.polyline && (
                     <AppPolyline
-                        coordinates={mainRoute}
+                        coordinates={delivery_restaurant_route.polyline}
+                        strokeColor="#FF4D4F"   // rojo principal
+                        strokeWidth={4}
+                    />
+                )}
+
+                {/* RUTA DELIVERY-CLIENTE */}
+                {delivery_client_route?.polyline && (
+                    <AppPolyline
+                        coordinates={delivery_client_route.polyline}
                         strokeColor="#FF4D4F"   // rojo principal
                         strokeWidth={4}
                     />
@@ -237,7 +315,8 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                 {
                     delivery_status.id == 'a0618dce-5d1b-4fae-a0bb-735d5c85270b' &&
                     <MarkRouteButton
-                        onPress={() => onDeliveryStatusChange('a0618dce-5e6f-479c-af94-98a36ef6a6d6')}
+                        onPress={handleMarkRouteToRestaurant}
+                        disabled={isLoading}
                     >
                         Marcar ruta al restaurante
                     </MarkRouteButton>
@@ -245,7 +324,8 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                 {
                     delivery_status.id == 'a0618dce-5fe8-4aa8-92c4-1797f9bc5618' &&
                     <MarkRouteButton
-                        onPress={() => onDeliveryStatusChange('a0618dce-61c4-46b1-813e-338332d2d5de')}
+                        onPress={handleMarkRouteToClient}
+                        disabled={isLoading}
                     >
                         Marcar ruta al cliente
                     </MarkRouteButton>
@@ -274,7 +354,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                             gap: 6
                         }}
                             onPress={() => onDeliveryStatusChange('a0618dce-62e9-4720-8e1f-10f3208c357e')}>
-                            <Ionicons name='cube' size={16} color='#ffffff' />
+                            <Ionicons name='checkmark' size={16} color='#ffffff' />
                             <AppText style={{ fontSize: 14, color: '#ffffff', textTransform: 'uppercase' }}>Entregar</AppText>
                         </TouchableOpacity>
                         <TouchableOpacity style={{
@@ -288,7 +368,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                             alignItems: 'center',
                             gap: 6
                         }}
-                            onPress={() => onDeliveryStatusChange('a0618dce-63fc-4e31-8a53-c6dd39ed54d3')}>
+                            onPress={handleCancelPress}>
                             <Ionicons name='close' size={16} color='#FF4D4F' />
                             <AppText style={{ fontSize: 14, color: '#FF4D4F', textTransform: 'uppercase' }}>Cancelar</AppText>
                         </TouchableOpacity>
@@ -308,7 +388,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
 
                 {/* Collapsed content */}
                 <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
-                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 24 }}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
                         <Image
                             source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant.logo}` }}
                             style={{
@@ -332,6 +412,17 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                                 ))}
                             </View>
                         </View>
+                    </View>
+
+                    <View style={{ marginBottom: 24 }}>
+                        <AppText style={{ fontSize: 14, color: '#646982' }}>
+                            <AppText weight="Bold" style={{ fontSize: 14 }}>Método de pago: </AppText>
+                            {payment_method?.name}
+                        </AppText>
+                        {
+                            payment_method_note &&
+                            <AppText style={{ fontSize: 13, color: '#646982', marginTop: 3, borderLeftWidth: 2, borderLeftColor: '#646982', paddingLeft: 6 }}>{payment_method_note}</AppText>
+                        }
                     </View>
 
                     {/* Timeline blocks */}
@@ -400,6 +491,54 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status, delivery
                     </View>
                 </>}
             </Animated.View>
+
+            {/* Cancel Modal */}
+            <Modal
+                visible={showCancelModal}
+                transparent
+                animationType="slide"
+                onRequestClose={handleCancelClose}
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    justifyContent: 'center',
+                    paddingHorizontal: 24
+                }}>
+                    <View style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 16,
+                        padding: 24
+                    }}>
+                        <TouchableOpacity
+                            style={{ position: 'absolute', top: 24, right: 24 }}
+                            onPress={handleCancelClose}
+                        >
+                            <Ionicons name="close" size={24} color="#646982" />
+                        </TouchableOpacity>
+                        <AppText weight="Bold" style={{ fontSize: 18, marginBottom: 16 }}>
+                            ¿Motivo de la cancelación?
+                        </AppText>
+                        <TextInput
+                            style={{
+                                borderWidth: 1,
+                                borderColor: '#E8E8E8',
+                                borderRadius: 8,
+                                paddingHorizontal: 12,
+                                paddingVertical: 10,
+                                fontSize: 14,
+                                minHeight: 80,
+                                textAlignVertical: 'top'
+                            }}
+                            placeholder="Escribe el motivo..."
+                            multiline
+                            value={cancelReason}
+                            onChangeText={setCancelReason}
+                        />
+                        <AuthButton text='Continuar' onPress={handleCancelConfirm} disabled={!cancelReason.trim()} />
+                    </View>
+                </View>
+            </Modal>
         </View>
     )
 }

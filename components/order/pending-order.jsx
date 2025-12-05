@@ -1,75 +1,73 @@
 import React, { useEffect, useRef, useState } from "react"
-import { View, Animated, Dimensions, TouchableOpacity } from "react-native"
-import { Polyline } from "react-native-maps";
+import { View, Animated, Dimensions, TouchableOpacity, Linking } from "react-native"
 import AppMapView from '@/components/maps/app-map-view'
 import AppText from "../app-text"
 import { Image } from "react-native"
 import { APP_URL, STORAGE_URL } from "@/constants/settings"
 import AppMarker from "@/components/maps/app-marker"
-import decodePolyline from '@/scripts/decode-polyline'
 import GMapsRest from '@/src/data/GMapsRest'
 import SimpleSkeleton from '@/components/skeleton/simple-skeleton'
 import StatusMarker from '@/components/statuses/status-marker'
 import { Ionicons } from "@expo/vector-icons";
 import AppPolyline from '@/components/maps/app-polyline';
+import OverlayOrder from "@/components/order/overlay-order";
+import { Audio } from "expo-av";
 
-const gMapsRest = new GMapsRest()
+import orderDoneImage from '@/assets/images/order-done.gif'
+import orderCancelledImage from '@/assets/images/order-cancelled.gif'
 
-const PendingOrder = ({ created_at, restaurant, status, delivery_latitude, delivery_longitude, delivery_status, delivery, details, statuses }) => {
-    const [mainRoute, setMainRoute] = useState([]);
-    const [altRoutes, setAltRoutes] = useState([]);
+import restaurantMarker from '@/assets/images/restaurant-marker.png'
+import clientMarker from '@/assets/images/client-marker.png'
+import deliveryMarker from '@/assets/images/delivery-marker.png'
+
+const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_latitude, delivery_longitude, delivery_status_id, delivery_status, delivery, details, statuses, deliveryLocation, delivery_restaurant_route, delivery_client_route, rejected_reason }) => {
     const [expanded, setExpanded] = useState(false);
     const bannerAnim = useRef(new Animated.Value(0)).current;
 
+    const orderAcceptedSound = useRef(null);
+    const orderCancelledSound = useRef(null);
+    const orderReadySound = useRef(null);
+
+    // Cargar el sonido al montar
+    useEffect(() => {
+        let isMounted = true;
+        async function loadSounds() {
+            try {
+                const { sound: acceptedSound } = await Audio.Sound.createAsync(require('@/assets/sounds/order-accepted.mp3'));
+                const { sound: cancelledSound } = await Audio.Sound.createAsync(require('@/assets/sounds/order-cancelled.mp3'));
+                const { sound: readySound } = await Audio.Sound.createAsync(require('@/assets/sounds/order-ready.mp3'));
+                if (isMounted) {
+                    orderAcceptedSound.current = acceptedSound;
+                    orderCancelledSound.current = cancelledSound;
+                    orderReadySound.current = readySound;
+                }
+            } catch (err) {
+                console.log("Error loading sound:", err);
+            }
+        }
+        loadSounds();
+        return () => {
+            isMounted = false;
+            if (orderAcceptedSound.current) {
+                orderAcceptedSound.current.unloadAsync();
+            }
+            if (orderCancelledSound.current) {
+                orderCancelledSound.current.unloadAsync();
+            }
+            if (orderReadySound.current) {
+                orderReadySound.current.unloadAsync();
+            }
+        };
+    }, []);
+
     const statusImage = `${STORAGE_URL}/status/${status?.image}`
 
-    const isFilled = (stepId) => {
+    const isFilled = (stepId, type = 'order') => {
         const stepStatus = statuses.find(s => s.id === stepId);
         if (!stepStatus) return false;
         const currentStatus = stepStatus.type === 'order' ? status : delivery_status;
         return currentStatus && stepStatus.order <= currentStatus.order;
     };
-
-    useEffect(() => {
-        const fetchRoute = async () => {
-            try {
-                const routes = await gMapsRest.routes(
-                    {
-                        latitude: restaurant.latitude,
-                        longitude: restaurant.longitude
-                    },
-                    {
-                        latitude: delivery_latitude,
-                        longitude: delivery_longitude
-                    }
-                );
-
-                if (!routes || routes.length === 0) return;
-
-                // Principal
-                const mainPoly = decodePolyline(routes[0].overview_polyline.points);
-                setMainRoute(mainPoly);
-
-                // Alternativas
-                const alts = routes.slice(1).map(r =>
-                    decodePolyline(r.overview_polyline.points)
-                );
-                setAltRoutes(alts);
-
-            } catch (e) {
-                console.log("Error cargando ruta:", e);
-            }
-        };
-
-        if (
-            restaurant &&
-            delivery_latitude &&
-            delivery_longitude &&
-            status?.id === 'f7b3f073-c8bf-49c9-ba6d-fcdfe82395dc'
-        ) {
-            fetchRoute();
-        }
-    }, [restaurant, delivery_latitude, delivery_longitude, status]);
 
     useEffect(() => {
         Animated.timing(bannerAnim, {
@@ -78,6 +76,48 @@ const PendingOrder = ({ created_at, restaurant, status, delivery_latitude, deliv
             useNativeDriver: false
         }).start();
     }, [expanded]);
+
+    useEffect(() => {
+        async function playSound(soundRef) {
+            if (!soundRef?.current) return;
+            try {
+                await soundRef.current.setPositionAsync(0);
+                await soundRef.current.playAsync();
+            } catch (e) {
+                console.log("Error playing sound:", e);
+            }
+        }
+
+        if (status_id === 'be7e24c9-a3e4-444e-adab-bb301b4ccce3') { // Orden aceptada
+            playSound(orderAcceptedSound);
+        }
+        if (
+            status_id === 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' ||
+            status_id === 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3'
+        ) { // Orden rechazada
+            playSound(orderCancelledSound);
+        }
+        if (status_id === 'f0a538f0-8aef-4ca7-80d1-297ab6c58279') { // Orden lista
+            playSound(orderReadySound);
+        }
+    }, [status_id]);
+
+    if (status_id == 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' || delivery_status_id == 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3') {
+        const status2use = status_id == 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' ? status : delivery_status
+        return <OverlayOrder
+            image={orderCancelledImage}
+            title={`¡Pedido ${status2use.name.toLowerCase()}!`}
+            description={status2use.description}
+            specification={rejected_reason}
+        />
+    }
+    if (delivery_status_id == 'a0618dce-62e9-4720-8e1f-10f3208c357e') {
+        return <OverlayOrder
+            image={orderDoneImage}
+            title="¡Pedido entregado!"
+            description={'Te esperamos pronto\n¡disfruta de nuestro servicio!'}
+        />
+    }
 
     return (
         <View style={{ flex: 1 }}>
@@ -99,37 +139,43 @@ const PendingOrder = ({ created_at, restaurant, status, delivery_latitude, deliv
                         longitude={restaurant.longitude}
                         title={restaurant.name}
                         color='#FF4D4F'
-                        icon='restaurant'
+                        icon={restaurantMarker}
                     />
                 )}
 
-                {/* Delivery (customer) marker */}
+                {/* Client marker */}
                 {delivery_latitude && delivery_longitude && (
                     <AppMarker
                         latitude={delivery_latitude}
                         longitude={delivery_longitude}
                         title='Entrega'
                         color='#10c469'
-                        icon='home'
+                        icon={clientMarker}
                     />
                 )}
 
-                {/* RUTAS ALTERNATIVAS */}
-                {altRoutes.length > 0 &&
-                    altRoutes.map((coords, i) => (
-                        <AppPolyline
-                            key={`alt-${i}`}
-                            coordinates={coords}
-                            strokeColor="rgba(255, 77, 79, 0.35)"   // rojito suave
-                            strokeWidth={3}
-                        />
-                    ))
-                }
+                {/* Delivery marker */}
+                {deliveryLocation && <AppMarker
+                    latitude={deliveryLocation.latitude}
+                    longitude={deliveryLocation.longitude}
+                    title='Entrega'
+                    color='#71b6f9'
+                    icon={deliveryMarker}
+                />}
 
-                {/* RUTA PRINCIPAL */}
-                {mainRoute.length > 0 && (
+                {/* RUTA DELIVERY-RESTAURANTE */}
+                {delivery_restaurant_route?.polyline && (
                     <AppPolyline
-                        coordinates={mainRoute}
+                        coordinates={delivery_restaurant_route.polyline}
+                        strokeColor="#FF4D4F"   // rojo principal
+                        strokeWidth={4}
+                    />
+                )}
+
+                {/* RUTA DELIVERY-CLIENTE */}
+                {delivery_client_route?.polyline && (
+                    <AppPolyline
+                        coordinates={delivery_client_route.polyline}
                         strokeColor="#FF4D4F"   // rojo principal
                         strokeWidth={4}
                     />

@@ -1,6 +1,6 @@
 import isHuawei from '@/hooks/is-huawei'
 import HMSMap from '@hmscore/react-native-hms-map';
 import MapView from 'react-native-maps';
-const Map = isHuawei() ? HMSMap : MapView;
+const AppMap = isHuawei() ? HMSMap : MapView;
 
-export default Map
+export default AppMap

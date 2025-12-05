@@ -5,9 +5,41 @@ import { STORAGE_URL } from "@/constants/settings";
 import InputContainer from "../forms/input-container";
 import { Ionicons } from "@expo/vector-icons";
 import { useCart } from "@/src/context/CartContext";
+import FavoritesRest from "@/src/data/favorites-rest";
+import { useEffect, useState } from "react";
+
+const favoritesRest = new FavoritesRest()
 
 const ItemDetail = ({ selectedItem, setSelectedItem }) => {
+    const [savingFavorite, setSavingFavorite] = useState(false)
     const { addToCart } = useCart();
+
+    const favoriteClicked = async () => {
+        setSavingFavorite(true)
+        const result = await favoritesRest.toggle({
+            item_id: selectedItem.id,
+        })
+        setSavingFavorite(false)
+        if (result === null) return
+        setSelectedItem((prev) => ({
+            ...prev,
+            is_favorite: result,
+        }));
+    }
+
+    useEffect(() => {
+        if (!selectedItem?.id) return
+        const checkFavorite = async () => {
+            setSavingFavorite(true)
+            const isFavorite = await favoritesRest.isFavorite(selectedItem.id)
+            setSavingFavorite(false)
+            setSelectedItem((prev) => ({
+                ...prev,
+                is_favorite: isFavorite,
+            }))
+        }
+        checkFavorite()
+    }, [selectedItem?.id])
 
     return <OffCanvas
         isOpen={!!selectedItem}
@@ -158,7 +190,7 @@ const ItemDetail = ({ selectedItem, setSelectedItem }) => {
                 <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity
-                onPress={() => { }}
+                onPress={() => favoriteClicked()}
                 style={{
                     position: "absolute",
                     bottom: 24,
@@ -166,9 +198,11 @@ const ItemDetail = ({ selectedItem, setSelectedItem }) => {
                     backgroundColor: "rgba(255,255,255,0.2)",
                     borderRadius: 20,
                     padding: 8,
+                    opacity: savingFavorite ? 0.5 : 1,
                 }}
+                disabled={savingFavorite}
             >
-                <Ionicons name="heart-outline" size={24} color="#fff" />
+                <Ionicons name={selectedItem?.is_favorite ? "heart" : "heart-outline"} size={24} color="#fff" />
             </TouchableOpacity>
         </View>
         <View style={{ padding: 24 }}>

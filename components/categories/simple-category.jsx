@@ -1,6 +1,7 @@
 import { Image, TouchableOpacity, View } from "react-native"
 import AppText from "../app-text"
 import { STORAGE_URL } from "../../constants/settings"
+import { router } from "expo-router"
 
 const SimpleCategory = ({ id, image, name, items_count }) => {
     return <TouchableOpacity

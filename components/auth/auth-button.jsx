@@ -8,6 +8,7 @@ const AuthButton = ({ text, loading, disabled, loadingText, onPress }) => {
         style={{
             backgroundColor: loading || disabled ? '#ff7173' : '#FF4D4F',
             height: 56,
+            paddingHorizontal: 24,
             borderRadius: 12,
             alignItems: 'center',
             justifyContent: 'center',

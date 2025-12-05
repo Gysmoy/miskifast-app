@@ -90,7 +90,8 @@ export default function RootLayout() {
             )} */}
             <Stack.Screen name="+not-found" />
           </Stack>
-          {/* <StatusBar translucent backgroundColor="#121223" barStyle="light-content" /> */}
+          <StatusBar translucent backgroundColor="#181C2E" barStyle="light-content" color="#ffffff" />
+
         </CartProvider>
     }
   </>

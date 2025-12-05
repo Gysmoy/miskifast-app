@@ -38,8 +38,10 @@ export default function HomeScreen() {
         setTaking(true);
         const result = await ordersRest.deliver(orderId);
         setTaking(false)
-        if (!result) return
-        onRefresh()
+        if (!result) {
+            onRefresh()
+            return
+        }
     }
 
     useEffect(() => {

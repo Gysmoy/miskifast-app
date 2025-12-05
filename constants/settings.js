@@ -3,7 +3,7 @@ export const APP_CORRELATIVE = 'miskifast'
 export const APP_ENV = 'local'
 
 // export const APP_URL = 'https://miskifast.atalaya.pe';
-export const APP_URL = 'http://172.20.10.3:9000';
+export const APP_URL = 'http://192.168.43.5:9000';
 export const STORAGE_URL = `${APP_URL}/storage/images`
 export const EVENTS_URL = `https://events.miskyfast.com`
 

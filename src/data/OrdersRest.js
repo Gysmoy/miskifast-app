@@ -59,13 +59,10 @@ class OrdersRest {
         return result?.data ?? true
     }
 
-    deliveryStatus = async (orderId, deliveryStatusId) => {
+    deliveryStatus = async (request) => {
         const { status, result } = await Fetch(`${APP_URL}/app/orders/delivery-status`, {
             method: 'PATCH',
-            body: JSON.stringify({
-                orderId,
-                deliveryStatusId
-            })
+            body: JSON.stringify(request)
         })
         if (!status) {
             Toast.show({

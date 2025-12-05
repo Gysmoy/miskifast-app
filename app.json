@@ -19,7 +19,7 @@
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
       "statusBarStyle": "light",
-      "statusBarBackgroundColor": "#00B894",
+      "statusBarBackgroundColor": "#181C2E",
       "bundleIdentifier": "com.sode.miskifast",
       "splash": {
         "image": "./assets/images/icon.png",
@@ -63,7 +63,7 @@
         }
       },
       "statusBar": {
-        "backgroundColor": "#574B36",
+        "backgroundColor": "#181C2E",
         "barStyle": "light-content"
       },
       "navigationBar": {
@@ -73,6 +73,7 @@
 
       "package": "com.sode.miskifast",
       "googleServicesFile": "./google-services.json",
+      "hmsServicesFile": "./agconnect-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -85,7 +86,9 @@
         "android.permission.VIBRATE",
         "android.permission.USE_FULL_SCREEN_INTENT",
         "com.google.android.c2dm.permission.RECEIVE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "usesCleartextTraffic": true,
       "networkSecurityConfig": {

@@ -7,40 +7,50 @@ import { HMSMarker } from '@hmscore/react-native-hms-map';
 const AppMarker = isHuawei() ? HMSMarker : Marker
 
 const CustomMarker = ({ title, icon, color, latitude, longitude }) => {
-    return <AppMarker
-        coordinate={{
-            latitude: Number(latitude),
-            longitude: Number(longitude)
-        }}
-        title={title}
-        anchor={{ x: 0.35, y: .8 }}
-    >
-        <View style={{
-            alignItems: "center",
-            position: 'relative'
-        }}>
-            {/* Icono circular */}
-            <View style={{
-                width: 46,
-                height: 46,
-                borderRadius: 23,
-                backgroundColor: "#fff",
-                justifyContent: "center",
+    return (
+        <AppMarker
+            coordinate={{
+                latitude: Number(latitude),
+                longitude: Number(longitude)
+            }}
+            title={title}
+            // anchor={{ x: 0.3, y: 0.55 }}
+            // centerOffset={{ x: 0, y: 0 }}
+            style={{backgroundColor: '#000'}}
+            flat={true}
+            icon={icon}
+            pinColor={color}
+        >
+            {/* <View style={{
                 alignItems: "center",
-                borderWidth: 2,
-                borderColor: color,
+                justifyContent: "center",
+                width: 36,
+                height: 30,
+                backgroundColor: 'transparent'
             }}>
-                <Ionicons name={icon} size={22} color={color} />
-            </View>
-            <View style={{
-                position: 'absolute',
-                width: 8,
-                height: 8,
-                backgroundColor: color,
-                borderRadius: 4,
-                bottom: -10,
-            }} />
-        </View>
-    </AppMarker>
+                <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: "#fff",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 2,
+                    borderColor: color,
+                }}>
+                    <Ionicons name={icon} size={16} color={color} />
+                </View>
+                <View style={{
+                    position: 'absolute',
+                    width: 8,
+                    height: 8,
+                    backgroundColor: color,
+                    borderRadius: 4,
+                    bottom: -4,
+                }} />
+            </View> */}
+        </AppMarker>
+    )
 }
+
 export default CustomMarker
