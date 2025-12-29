@@ -10,17 +10,20 @@
     "newArchEnabled": false,
     "backgroundColor": "#121223",
     "assets": ["./assets/fonts/"],
+
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#574B36"
     },
+
     "ios": {
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
       "statusBarStyle": "light",
       "statusBarBackgroundColor": "#181C2E",
       "bundleIdentifier": "com.sode.miskifast",
+
       "splash": {
         "image": "./assets/images/icon.png",
         "resizeMode": "contain",
@@ -31,27 +34,33 @@
           "backgroundColor": "#2D2A24"
         }
       },
+
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "This app needs access to camera to take photos and videos for support tickets.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images and videos for support tickets.",
+        "NSCameraUsageDescription": "This app needs access to camera to take photos and videos.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images.",
         "NSMicrophoneUsageDescription": "This app needs access to microphone for support features.",
-        "NSLocationWhenInUseUsageDescription": "This app may use location for device diagnostics.",
-        "UIBackgroundModes": ["remote-notification"]
+        "NSLocationWhenInUseUsageDescription": "This app uses your location for delivery tracking.",
+        "UIBackgroundModes": ["remote-notification", "location"]
       }
     },
+
     "android": {
       "icon": "./assets/images/icon.png",
       "softwareKeyboardLayoutMode": "pan",
       "windowSoftInputMode": "adjustPan",
+
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#574B36",
         "monochromeImage": "./assets/images/icon.png"
       },
+
       "jsEngine": "hermes",
+
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
+
       "splash": {
         "image": "./assets/images/icon.png",
         "resizeMode": "contain",
@@ -62,18 +71,21 @@
           "backgroundColor": "#2D2A24"
         }
       },
+
       "statusBar": {
         "backgroundColor": "#181C2E",
         "barStyle": "light-content"
       },
+
       "navigationBar": {
         "backgroundColor": "#966e28ff",
         "barStyle": "light-content"
       },
 
       "package": "com.sode.miskifast",
+
       "googleServicesFile": "./google-services.json",
-      "hmsServicesFile": "./agconnect-services.json",
+
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -84,28 +96,29 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK",
         "android.permission.VIBRATE",
-        "android.permission.USE_FULL_SCREEN_INTENT",
-        "com.google.android.c2dm.permission.RECEIVE",
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ],
+
       "usesCleartextTraffic": true,
       "networkSecurityConfig": {
         "cleartextTrafficPermitted": true
       }
     },
+
     "web": {
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/images/favicon.png",
       "backgroundColor": "#00B894"
     },
+
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-web-browser",
       "expo-system-ui",
+
       [
         "expo-notifications",
         {
@@ -115,6 +128,7 @@
           "sounds": ["./assets/sounds/message.mp3"]
         }
       ],
+
       [
         "expo-build-properties",
         {
@@ -123,14 +137,13 @@
             "useFrameworks": "static"
           },
           "android": {
-            "usesCleartextTraffic": true,
-            "networkSecurityConfig": {
-              "cleartextTrafficPermitted": true
-            }
+            "usesCleartextTraffic": true
           }
         }
       ],
+
       "expo-secure-store",
+
       [
         "expo-location",
         {
@@ -138,9 +151,11 @@
         }
       ]
     ],
+
     "experiments": {
       "typedRoutes": true
     },
+
     "extra": {
       "router": {},
       "eas": {

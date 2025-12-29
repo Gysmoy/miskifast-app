@@ -12,7 +12,7 @@ import InputContainer from "../../components/forms/input-container";
 import AuthButton from "../../components/auth/auth-button";
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProfilePicture from "../../components/profile/profile-picture";
 
 const authRest = new AuthRest()
@@ -72,7 +72,7 @@ export default function PersonalInfoScreen() {
         setSaving(false)
         console.log(result)
         if (!result) return
-        await SecureStore.setItemAsync('session', JSON.stringify(result));
+        await AsyncStorage.setItem('session', JSON.stringify(result));
         setSession(result)
         setIsEditing(false)
         setProfilePreview(null)

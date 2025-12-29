@@ -6,7 +6,6 @@ import PaymentMethodsRest from '@/src/data/PaymentMethodsRest';
 import OrdersRest from '@/src/data/OrdersRest';
 import StatusesRest from '@/src/data/statuses-rest';
 import Toast from 'react-native-toast-message';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import isotipo from '@/assets/images/isotipo.png'
 import { APP_CORRELATIVE, APP_NAME, EVENTS_URL, APP_ENV } from '@/constants/settings';
@@ -242,7 +241,7 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
     }
     setIsLoading(false);
 
-    const currentSession = await SecureStore.getItemAsync('session');
+    const currentSession = await AsyncStorage.getItem('session');
     setSession(JSON.parse(currentSession))
 
     // Load cart from AsyncStorage
@@ -339,7 +338,7 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
 
   useEffect(() => {
     if (!appMode) return
-    SecureStore.setItemAsync('app-mode', appMode)
+    AsyncStorage.setItem('app-mode', appMode)
   }, [appMode])
 
   useEffect(() => {
@@ -348,7 +347,7 @@ export const CartProvider = ({ isAuthenticated, setIsAuthenticated, children }) 
   }, [lastPendingOrder])
 
   useEffect(() => {
-    SecureStore.getItemAsync('app-mode')
+    AsyncStorage.getItem('app-mode')
       .then(mode => {
         setAppMode(mode)
       })

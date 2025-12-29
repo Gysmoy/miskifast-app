@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import JSEncrypt from 'jsencrypt';
 import { PUBLIC_RSA_KEY } from '@/constants/settings';
 import AuthRest from '@/src/data/AuthRest';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 import { useCart } from '@/src/context/CartContext';
@@ -29,7 +29,7 @@ export default function RegisterScreen() {
     const [duplicateUser, setDuplicateUser] = useState(null);
     const [showModal, setShowModal] = useState(false);
 
-    const { loadIndex } = useCart()
+    const { loadIndex, setAppMode } = useCart()
 
     const jsEncrypt = new JSEncrypt()
     jsEncrypt.setPublicKey(PUBLIC_RSA_KEY)
@@ -72,10 +72,11 @@ export default function RegisterScreen() {
             return
         }
 
-        await SecureStore.setItemAsync('bearerToken', result.bearerToken);
-        await SecureStore.setItemAsync('session', JSON.stringify(result.user));
+        await AsyncStorage.setItem('bearerToken', result.bearerToken);
+        await AsyncStorage.setItem('session', JSON.stringify(result.user));
         await loadIndex()
         setLoading(false);
+        setAppMode('Client')
         router.replace('/');
     }
 

@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    ScrollView,
-    TouchableOpacity,
-    RefreshControl,
-    FlatList,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, RefreshControl, FlatList, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useCart } from '@/src/context/CartContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +10,9 @@ import SimpleCategory from '../../components/categories/simple-category';
 import SwitchMode from '../../components/ui/switch-mode';
 import AvailableOrder from '../../components/order/available-order';
 import OrdersRest from '@/src/data/OrdersRest'
+
+import isotipo from '@/assets/images/isotipo.png'
+import { APP_NAME } from '../../constants/settings';
 
 const ordersRest = new OrdersRest()
 
@@ -57,11 +54,25 @@ export default function HomeScreen() {
     return (<>
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
             <View style={{ padding: 24, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View style={{}}>
-                    <AppText weight='Bold' style={{ fontSize: 12, color: '#FF4D4F', textTransform: 'uppercase' }}>Entregar en</AppText>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <AppText style={{ fontSize: 14, marginRight: 4, color: '#676767' }}>Ub. San José T-13</AppText>
-                        <Ionicons name="chevron-down" size={16} color="#666" />
+                <View style={{
+                    flexDirection: 'row',
+                    gap: 12
+                }}>
+                    <View style={{ padding: 4, backgroundColor: '#FF4D4F', borderRadius: 8 }}>
+                        <Image
+                            source={isotipo}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                objectFit: 'contain',
+                                tintColor: '#facc15',
+                                objectFit: 'contain',
+                            }}
+                        />
+                    </View>
+                    <View>
+                        <AppText weight='Bold' style={{ fontSize: 18, color: '#FF4D4F', marginBottom: 2 }}>{APP_NAME}</AppText>
+                        <AppText style={{ fontSize: 14, marginRight: 4, color: '#676767' }}>Descubre, pide y disfruta</AppText>
                     </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 12 }}>

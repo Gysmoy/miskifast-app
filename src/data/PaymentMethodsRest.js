@@ -1,6 +1,5 @@
 import Fetch from "@/scripts/fetch";
 import { APP_URL } from "../../constants/settings";
-import * as SecureStore from 'expo-secure-store';
 
 class PaymentMethodsRest {
     all = async () => {

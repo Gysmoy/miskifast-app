@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const parseable = (text) => {
     try {
@@ -17,7 +17,7 @@ const Fetch = async (url, options = {}) => {
         headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
         headers.Accept = headers.Accept ?? 'application/json'
 
-        const bearerToken = await SecureStore.getItemAsync('bearerToken');
+        const bearerToken = await AsyncStorage.getItem('bearerToken');
         if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`
 
         const res = await fetch(url, { method, headers, body, ...params })

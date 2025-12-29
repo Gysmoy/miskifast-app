@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { CartProvider } from '@/src/context/CartContext';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, Image, Text, TextInput } from 'react-native';
 import AuthRest from '@/src/data/AuthRest'
 import isotipo from '@/assets/images/isotipo.png'
@@ -32,7 +32,7 @@ export default function RootLayout() {
       try {
         const result = await authRest.verify();
         if (!result) throw new Error('No session');
-        await SecureStore.setItemAsync('session', JSON.stringify(result));
+        await AsyncStorage.setItem('session', JSON.stringify(result));
         setIsAuthenticated(true);
       } catch (err) {
         setIsAuthenticated(false);

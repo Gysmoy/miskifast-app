@@ -1,6 +1,5 @@
 import { APP_URL } from "../../constants/settings";
 import Fetch from '@/scripts/fetch'
-import * as SecureStore from 'expo-secure-store';
 
 class ItemsRest {
     all = async () => {

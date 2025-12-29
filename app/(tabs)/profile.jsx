@@ -17,7 +17,7 @@ import MenuItem from '../../components/menu/menu-item';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import OffCanvas from '../../components/off-canvas';
 import ProfilePicture from '../../components/profile/profile-picture';
 
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
       });
 
       // 🔐 Si tienes token de autenticación, agrégalo aquí
-      const bearerToken = await SecureStore.getItemAsync('bearerToken');
+      const bearerToken = await AsyncStorage.getItem('bearerToken');
 
       // 🚀 Hacer el fetch directo con multipart/form-data
       const response = await fetch(`${APP_URL}/app/auth/profile`, {
@@ -168,7 +168,7 @@ export default function ProfileScreen() {
           <AppText style={{ fontSize: 14, color: '#747783' }}>Versión 1.0.0</AppText>
         </View>
       </ScrollView>
-
+ 
     </View>
     <Modal
       transparent={true}

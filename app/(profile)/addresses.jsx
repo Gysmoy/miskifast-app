@@ -8,7 +8,8 @@ import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import AuthButton from "../../components/auth/auth-button";
 import AddressesRest from "../../src/data/AddressesRest";
-import MapView, { Marker } from "react-native-maps";
+import AppMapView from "../../components/maps/app-map-view";
+import AppMarker from "../../components/maps/app-marker";
 import InputContainer from "../../components/forms/input-container";
 import Toast from "react-native-toast-message";
 import { APP_URL } from "../../constants/settings";
@@ -148,25 +149,25 @@ export default function AddressesScreen() {
             resetForm();
         }
 
-        if (Platform.OS === 'android') {
-            const manufacturer = Device.manufacturer || '';
-            const isHuawei = manufacturer.toLowerCase().includes('huawei');
+        // if (Platform.OS === 'android') {
+        //     const manufacturer = Device.manufacturer || '';
+        //     const isHuawei = manufacturer.toLowerCase().includes('huawei');
 
-            if (isHuawei) {
-                Toast.show({
-                    type: 'info',
-                    text1: 'Abriendo versión web',
-                    text2: 'Tu dispositivo no tiene los servicios de Google. Abriendo el mapa en el navegador...',
-                    position: 'bottom',
-                });
+        //     if (isHuawei) {
+        //         Toast.show({
+        //             type: 'info',
+        //             text1: 'Abriendo versión web',
+        //             text2: 'Tu dispositivo no tiene los servicios de Google. Abriendo el mapa en el navegador...',
+        //             position: 'bottom',
+        //         });
 
-                const url = address
-                    ? `${APP_URL}/app/add-address?location=${address.id}`
-                    : `${APP_URL}/app/add-address`;
-                Linking.openURL(url);
-                return;
-            }
-        }
+        //         const url = address
+        //             ? `${APP_URL}/app/add-address?location=${address.id}`
+        //             : `${APP_URL}/app/add-address`;
+        //         Linking.openURL(url);
+        //         return;
+        //     }
+        // }
 
         setIsEditing(true);
     };
@@ -284,14 +285,14 @@ export default function AddressesScreen() {
                                 <Ionicons name="locate" size={24} color="#fff" />
                             </TouchableOpacity>
                         </View>
-                        <MapView
+                        <AppMapView
                             style={{ flex: 1, aspectRatio: 75 / 59 }}
                             region={region}
                             onRegionChangeComplete={setRegion}
                             onPress={onMapPress}
                         >
-                            {coordinate && <Marker coordinate={coordinate} />}
-                        </MapView>
+                            {coordinate && <AppMarker coordinate={coordinate} />}
+                        </AppMapView>
                         {/* </View> */}
 
                         <View style={{ padding: 24, gap: 24 }}>
