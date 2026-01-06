@@ -72,7 +72,7 @@ export default function RootLayout() {
           />
           <ActivityIndicator size="large" color="#FF4D4F" />
           <AppText weight='Bold' style={{ marginTop: 12, fontSize: 20, color: '#333' }}>{APP_NAME}</AppText>
-          <AppText style={{ marginTop: 8, fontSize: 14, color: '#666' }}>Verificando sesión...</AppText>
+          <AppText style={{ marginTop: 8, fontSize: 14, color: '#666666' }}>Verificando sesión...</AppText>
         </SafeAreaView>
         : <CartProvider isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated}>
           <Stack screenOptions={{ headerShown: false, backgroundColor: '#ffffff' }}>

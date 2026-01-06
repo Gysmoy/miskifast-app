@@ -13,7 +13,6 @@ import OrdersRest from "@/src/data/OrdersRest";
 import EventsRest from '@/src/data/events-rest';
 import * as Location from 'expo-location';
 import AppPolyline from "../maps/app-polyline";
-import AppMapView from "@/components/maps/app-map-view"
 import AuthButton from "../auth/auth-button"
 import { Audio } from "expo-av";
 import OverlayOrder from "./overlay-order"
@@ -24,6 +23,7 @@ import orderCancelledImage from '@/assets/images/order-cancelled.gif'
 import restaurantMarker from '@/assets/images/restaurant-marker.png'
 import clientMarker from '@/assets/images/client-marker.png'
 import deliveryMarker from '@/assets/images/delivery-marker.png'
+import MapView from "react-native-maps"
 
 const gMapsRest = new GMapsRest()
 const ordersRest = new OrdersRest()
@@ -32,13 +32,17 @@ const eventsRest = new EventsRest()
 const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, status, delivery_latitude, delivery_longitude, delivery_status_id, delivery_status, client, details, statuses, delivery_restaurant_route, delivery_client_route, payment_method, payment_method_note, rejected_reason }) => {
     const [expanded, setExpanded] = useState(false);
     const bannerAnim = useRef(new Animated.Value(0)).current;
-    const locationIntervalRef = useRef(null);
+    const locationWatchRef = useRef(null);
     const [userLocation, setUserLocation] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
 
     const orderReadySound = useRef(null);
+
+    // Safe status id unified
+    const safeDeliveryStatusId = delivery_status?.id ?? delivery_status_id;
+    const safeStatusId = status?.id ?? status_id;
 
     // Cargar el sonido al montar
     useEffect(() => {
@@ -61,17 +65,16 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
         return () => {
             isMounted = false;
             if (orderReadySound.current) {
-                orderReadySound.current.unloadAsync();
+                orderReadySound.current.unloadAsync().catch(() => { });
             }
         };
     }, []);
 
-    const statusImage = `${STORAGE_URL}/status/${status?.image}`
-
-    const isFilled = (stepId) => {
-        const stepStatus = statuses.find(s => s.id === stepId);
+    const isFilled = (stepId, type = null) => {
+        if (!Array.isArray(statuses)) return false;
+        const stepStatus = statuses.find(s => s?.id === stepId);
         if (!stepStatus) return false;
-        const currentStatus = stepStatus.type === 'order' ? status : delivery_status;
+        const currentStatus = type === 'delivery' ? delivery_status : status;
         return currentStatus && stepStatus.order <= currentStatus.order;
     };
 
@@ -87,65 +90,112 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
 
     // Play sound when status_id becomes 'f0a538f0-8aef-4ca7-80d1-297ab6c58279'
     useEffect(() => {
-        if (status_id === "f0a538f0-8aef-4ca7-80d1-297ab6c58279") {
-            if (orderReadySound.current) orderReadySound.current.replayAsync()
+        if (safeStatusId === "f0a538f0-8aef-4ca7-80d1-297ab6c58279") {
+            if (orderReadySound.current) {
+                orderReadySound.current.getStatusAsync().then((status) => {
+                    if (status.isLoaded) {
+                        orderReadySound.current.replayAsync().catch(() => { });
+                    }
+                }).catch(() => { });
+            }
         }
-    }, [status_id]);
+    }, [safeStatusId]);
 
     // Request location permission and start watching position
     useEffect(() => {
+        let isMounted = true;
+
         (async () => {
-            let { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-            if (locStatus !== 'granted') {
-                console.warn('Location permission not granted');
-                return;
-            }
-            let location = await Location.getCurrentPositionAsync({});
-            setUserLocation(location.coords);
-        })();
-    }, []);
-
-    // Start sending location every 5s if delivery_status.id is one of the specified ones
-    useEffect(() => {
-        const targetStatusIds = [
-            'a0618dce-5d1b-4fae-a0bb-735d5c85270b',
-            'a0618dce-5e6f-479c-af94-98a36ef6a6d6',
-            'a0618dce-5fe8-4aa8-92c4-1797f9bc5618',
-            'a0618dce-61c4-46b1-813e-338332d2d5de'
-        ];
-
-        if (targetStatusIds.includes(delivery_status?.id)) {
-            locationIntervalRef.current = setInterval(async () => {
-                try {
-                    let location = await Location.getCurrentPositionAsync({});
-                    setUserLocation(location.coords);
-                    await eventsRest.emit('delivery_location', {
-                        latitude: location.coords.latitude,
-                        longitude: location.coords.longitude
-                    }, {
-                        user_id: client.id,
-                        mode: 'client'
-                    });
-                } catch (err) {
-                    console.warn('Error sending location:', err);
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== Location.PermissionStatus.GRANTED) {
+                    console.warn('Location permission denied');
+                    return;
                 }
-            }, 2500);
-        } else {
-            if (locationIntervalRef.current) {
-                clearInterval(locationIntervalRef.current);
-                locationIntervalRef.current = null;
-                setUserLocation(null)
+
+                const location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced, // 👈 más estable que High
+                });
+
+                if (isMounted) {
+                    setUserLocation(location.coords);
+                }
+            } catch (err) {
+                console.error('Error getting initial location', err);
             }
-        }
+        })();
 
         return () => {
-            if (locationIntervalRef.current) {
-                clearInterval(locationIntervalRef.current);
-                locationIntervalRef.current = null;
-                setUserLocation(null)
-            }
+            isMounted = false;
         };
-    }, [delivery_status?.id]);
+    }, []);
+
+    // Start sending location every 2.5s if delivery_status.id is one of the specified ones
+    useEffect(() => {
+    const targetStatusIds = [
+        'a0618dce-5d1b-4fae-a0bb-735d5c85270b',
+        'a0618dce-5e6f-479c-af94-98a36ef6a6d6',
+        'a0618dce-5fe8-4aa8-92c4-1797f9bc5618',
+        'a0618dce-61c4-46b1-813e-338332d2d5de'
+    ];
+
+    const shouldTrack = targetStatusIds.includes(safeDeliveryStatusId);
+
+    const startWatching = async () => {
+        try {
+            // 🔒 Defensa extra
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status !== Location.PermissionStatus.GRANTED) return;
+
+            // 🧹 Evitar duplicados
+            if (locationWatchRef.current) {
+                locationWatchRef.current.remove();
+                locationWatchRef.current = null;
+            }
+
+            locationWatchRef.current = await Location.watchPositionAsync(
+                {
+                    accuracy: Location.Accuracy.Balanced,
+                    timeInterval: 3000,
+                    distanceInterval: 5, // 👈 clave para estabilidad
+                },
+                (location) => {
+                    setUserLocation(location.coords);
+
+                    eventsRest.emit(
+                        'delivery_location',
+                        {
+                            latitude: location.coords.latitude,
+                            longitude: location.coords.longitude,
+                        },
+                        {
+                            user_id: client?.id,
+                            mode: 'client',
+                        }
+                    ).catch(() => { });
+                }
+            );
+        } catch (err) {
+            console.error('Error starting location watcher', err);
+        }
+    };
+
+    if (shouldTrack) {
+        startWatching();
+    } else {
+        if (locationWatchRef.current) {
+            locationWatchRef.current.remove();
+            locationWatchRef.current = null;
+        }
+    }
+
+    return () => {
+        if (locationWatchRef.current) {
+            locationWatchRef.current.remove();
+            locationWatchRef.current = null;
+        }
+    };
+}, [safeDeliveryStatusId]);
 
     useEffect(() => {
         Animated.timing(bannerAnim, {
@@ -219,23 +269,23 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
         setCancelReason('');
     };
 
-    if (delivery_status_id == 'a0618dce-62e9-4720-8e1f-10f3208c357e') return <OverlayOrder
+    if (safeDeliveryStatusId === 'a0618dce-62e9-4720-8e1f-10f3208c357e') return <OverlayOrder
         image={orderDoneImage}
         title='¡Pedido entregado!'
         description={'Gracias por tu servicio\n¡Excelente trabajo!'}
         countDown={5}
     />
-    if (delivery_status_id === 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3') return <OverlayOrder
+    if (safeDeliveryStatusId === 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3') return <OverlayOrder
         image={orderCancelledImage}
         title='Pedido cancelado'
-        description={delivery_status.description}
+        description={delivery_status?.description ?? ''}
         specification={rejected_reason}
     />
 
     return (
         <View style={{ flex: 1 }}>
             {/* Map background */}
-            <AppMapView
+            <MapView
                 style={{ flex: 1 }}
                 customMapStyle={GMapsRest.cleanMapStyle()}
                 initialRegion={{
@@ -289,7 +339,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                         strokeWidth={4}
                     />
                 )}
-            </AppMapView>
+            </MapView>
 
             {/* Expandable banner - always at bottom with content height */}
             <Animated.View
@@ -313,7 +363,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                 }}
             >
                 {
-                    delivery_status.id == 'a0618dce-5d1b-4fae-a0bb-735d5c85270b' &&
+                    safeDeliveryStatusId == 'a0618dce-5d1b-4fae-a0bb-735d5c85270b' &&
                     <MarkRouteButton
                         onPress={handleMarkRouteToRestaurant}
                         disabled={isLoading}
@@ -322,7 +372,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                     </MarkRouteButton>
                 }
                 {
-                    delivery_status.id == 'a0618dce-5fe8-4aa8-92c4-1797f9bc5618' &&
+                    safeDeliveryStatusId == 'a0618dce-5fe8-4aa8-92c4-1797f9bc5618' &&
                     <MarkRouteButton
                         onPress={handleMarkRouteToClient}
                         disabled={isLoading}
@@ -331,7 +381,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                     </MarkRouteButton>
                 }
                 {
-                    delivery_status.id == 'a0618dce-61c4-46b1-813e-338332d2d5de' &&
+                    safeDeliveryStatusId == 'a0618dce-61c4-46b1-813e-338332d2d5de' &&
                     <View style={{
                         position: 'absolute',
                         borderRadius: 12,
@@ -390,7 +440,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                 <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
                     <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
                         <Image
-                            source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant.logo}` }}
+                            source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant?.logo ?? ''}` }}
                             style={{
                                 width: 64, height: 64,
                                 borderRadius: 12,
@@ -398,16 +448,16 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                             }}
                         />
                         <View style={{ flex: 1 }}>
-                            <AppText style={{ fontSize: 18, marginBottom: 6 }}>{restaurant?.name}</AppText>
+                            <AppText style={{ fontSize: 18, marginBottom: 6 }}>{restaurant?.name ?? ''}</AppText>
                             <AppText style={{ fontSize: 14, marginBottom: 12, color: '#A0A5BA' }}>
                                 Pedido el {new Date(created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} a las {new Date(created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true }).replace('a.m.', 'am').replace('p.m.', 'pm')}
                             </AppText>
                             <View>
-                                {details?.map((item, idx) => (
+                                {Array.isArray(details) && details.map((item, idx) => (
                                     <View key={idx} style={{ flexDirection: 'row', marginBottom: 4, gap: 6, alignItems: 'flex-end' }}>
-                                        <AppText weight="Bold" style={{ fontSize: 13, color: '#646982' }}>{item.quantity}x</AppText>
-                                        <AppText style={{ fontSize: 13, color: '#646982' }}>{item.item}</AppText>
-                                        <AppText style={{ fontSize: 12, color: '#A0A5BA' }}>{item.presentation}</AppText>
+                                        <AppText weight="Bold" style={{ fontSize: 13, color: '#646982' }}>{item?.quantity ?? 0}x</AppText>
+                                        <AppText style={{ fontSize: 13, color: '#646982' }}>{item?.item ?? ''}</AppText>
+                                        <AppText style={{ fontSize: 12, color: '#A0A5BA' }}>{item?.presentation ?? ''}</AppText>
                                     </View>
                                 ))}
                             </View>
@@ -417,7 +467,7 @@ const DeliveringOrder = ({ id: orderId, created_at, restaurant, status_id, statu
                     <View style={{ marginBottom: 24 }}>
                         <AppText style={{ fontSize: 14, color: '#646982' }}>
                             <AppText weight="Bold" style={{ fontSize: 14 }}>Método de pago: </AppText>
-                            {payment_method?.name}
+                            {payment_method?.name ?? ''}
                         </AppText>
                         {
                             payment_method_note &&

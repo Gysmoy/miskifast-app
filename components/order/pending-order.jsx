@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
 import { View, Animated, Dimensions, TouchableOpacity, Linking } from "react-native"
-import AppMapView from '@/components/maps/app-map-view'
 import AppText from "../app-text"
 import { Image } from "react-native"
 import { APP_URL, STORAGE_URL } from "@/constants/settings"
@@ -19,6 +18,7 @@ import orderCancelledImage from '@/assets/images/order-cancelled.gif'
 import restaurantMarker from '@/assets/images/restaurant-marker.png'
 import clientMarker from '@/assets/images/client-marker.png'
 import deliveryMarker from '@/assets/images/delivery-marker.png'
+import MapView from "react-native-maps"
 
 const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_latitude, delivery_longitude, delivery_status_id, delivery_status, delivery, details, statuses, deliveryLocation, delivery_restaurant_route, delivery_client_route, rejected_reason }) => {
     const [expanded, setExpanded] = useState(false);
@@ -63,7 +63,8 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
     const statusImage = `${STORAGE_URL}/status/${status?.image}`
 
     const isFilled = (stepId, type = 'order') => {
-        const stepStatus = statuses.find(s => s.id === stepId);
+        if (!Array.isArray(statuses)) return false;
+        const stepStatus = statuses.find(s => s?.id === stepId);
         if (!stepStatus) return false;
         const currentStatus = stepStatus.type === 'order' ? status : delivery_status;
         return currentStatus && stepStatus.order <= currentStatus.order;
@@ -102,16 +103,19 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
         }
     }, [status_id]);
 
-    if (status_id == 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' || delivery_status_id == 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3') {
-        const status2use = status_id == 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' ? status : delivery_status
+    const finalStatusId = delivery_status_id || status_id;
+
+    if (finalStatusId === 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' || finalStatusId === 'a0618dce-63fc-4e31-8a53-c6dd39ed54d3') {
+        const status2use = finalStatusId === 'ea4578c1-f0c7-4495-ade5-a82b5ca7cc4b' ? status : delivery_status
+        if (!status2use) return null;
         return <OverlayOrder
             image={orderCancelledImage}
-            title={`¡Pedido ${status2use.name.toLowerCase()}!`}
-            description={status2use.description}
+            title={`¡Pedido ${status2use.name?.toLowerCase()}!`}
+            description={status2use.description || ''}
             specification={rejected_reason}
         />
     }
-    if (delivery_status_id == 'a0618dce-62e9-4720-8e1f-10f3208c357e') {
+    if (finalStatusId === 'a0618dce-62e9-4720-8e1f-10f3208c357e') {
         return <OverlayOrder
             image={orderDoneImage}
             title="¡Pedido entregado!"
@@ -122,7 +126,7 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
     return (
         <View style={{ flex: 1 }}>
             {/* Map background */}
-            <AppMapView
+            <MapView
                 style={{ flex: 1 }}
                 customMapStyle={GMapsRest.cleanMapStyle()}
                 initialRegion={{
@@ -137,7 +141,7 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                     <AppMarker
                         latitude={restaurant.latitude}
                         longitude={restaurant.longitude}
-                        title={restaurant.name}
+                        title={restaurant.name || ''}
                         color='#FF4D4F'
                         icon={restaurantMarker}
                     />
@@ -155,7 +159,7 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                 )}
 
                 {/* Delivery marker */}
-                {deliveryLocation && <AppMarker
+                {deliveryLocation?.latitude && deliveryLocation?.longitude && <AppMarker
                     latitude={deliveryLocation.latitude}
                     longitude={deliveryLocation.longitude}
                     title='Entrega'
@@ -164,7 +168,7 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                 />}
 
                 {/* RUTA DELIVERY-RESTAURANTE */}
-                {delivery_restaurant_route?.polyline && (
+                {delivery_restaurant_route?.polyline && Array.isArray(delivery_restaurant_route.polyline) && (
                     <AppPolyline
                         coordinates={delivery_restaurant_route.polyline}
                         strokeColor="#FF4D4F"   // rojo principal
@@ -173,14 +177,14 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                 )}
 
                 {/* RUTA DELIVERY-CLIENTE */}
-                {delivery_client_route?.polyline && (
+                {delivery_client_route?.polyline && Array.isArray(delivery_client_route.polyline) && (
                     <AppPolyline
                         coordinates={delivery_client_route.polyline}
                         strokeColor="#FF4D4F"   // rojo principal
                         strokeWidth={4}
                     />
                 )}
-            </AppMapView>
+            </MapView>
 
             {/* Expandable banner - always at bottom with content height */}
             <Animated.View
@@ -220,7 +224,7 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                 <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
                     <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 24 }}>
                         <Image
-                            source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant.logo}` }}
+                            source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant?.logo || ''}` }}
                             style={{
                                 width: 64, height: 64,
                                 borderRadius: 12,
@@ -228,16 +232,16 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                             }}
                         />
                         <View style={{ flex: 1 }}>
-                            <AppText style={{ fontSize: 18, marginBottom: 6 }}>{restaurant?.name}</AppText>
+                            <AppText style={{ fontSize: 18, marginBottom: 6 }}>{restaurant?.name || ''}</AppText>
                             <AppText style={{ fontSize: 14, marginBottom: 12, color: '#A0A5BA' }}>
-                                Pedido el {new Date(created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} a las {new Date(created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true }).replace('a.m.', 'am').replace('p.m.', 'pm')}
+                                Pedido el {created_at ? new Date(created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : ''} a las {created_at ? new Date(created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true }).replace('a.m.', 'am').replace('p.m.', 'pm') : ''}
                             </AppText>
                             <View>
-                                {details?.map((item, idx) => (
+                                {Array.isArray(details) && details.map((item, idx) => (
                                     <View key={idx} style={{ flexDirection: 'row', marginBottom: 4, gap: 6 }}>
-                                        <AppText weight="Bold" style={{ fontSize: 13, color: '#646982' }}>{item.quantity}x</AppText>
-                                        <AppText style={{ fontSize: 13, color: '#646982' }}>{item.item}</AppText>
-                                        <AppText style={{ fontSize: 12, color: '#A0A5BA' }}>{item.presentation}</AppText>
+                                        <AppText weight="Bold" style={{ fontSize: 13, color: '#646982' }}>{item?.quantity || 0}x</AppText>
+                                        <AppText style={{ fontSize: 13, color: '#646982' }}>{item?.item || ''}</AppText>
+                                        <AppText style={{ fontSize: 12, color: '#A0A5BA' }}>{item?.presentation || ''}</AppText>
                                     </View>
                                 ))}
                             </View>
@@ -260,12 +264,12 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                         />
                     </View>
                     <View>
-                        {status.id == 'f7b3f073-c8bf-49c9-ba6d-fcdfe82395dc' ? <>
-                            <AppText weight='Bold' style={{ fontSize: 13 }}>{delivery_status?.name}</AppText>
-                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{delivery_status?.description}</AppText>
+                        {status?.id === 'f7b3f073-c8bf-49c9-ba6d-fcdfe82395dc' ? <>
+                            <AppText weight='Bold' style={{ fontSize: 13 }}>{delivery_status?.name || ''}</AppText>
+                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{delivery_status?.description || ''}</AppText>
                         </> : <>
-                            <AppText weight='Bold' style={{ fontSize: 13 }}>{status?.name}</AppText>
-                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{status?.description}</AppText>
+                            <AppText weight='Bold' style={{ fontSize: 13 }}>{status?.name || ''}</AppText>
+                            <AppText style={{ fontSize: 13, color: '#A0A5BA' }}>{status?.description || ''}</AppText>
                         </>}
                     </View>
                 </View>
@@ -278,18 +282,18 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                             <AppText style={{ fontSize: 14, color: '#A0A5BA', textTransform: 'uppercase' }}>Tiempo estimado de entrega</AppText>
                         </View>
                         <View>
-                            {statuses
+                            {Array.isArray(statuses) && statuses
                                 .filter(({ trackeable }) => trackeable)
-                                .sort((a, b) => a.order - b.order)
+                                .sort((a, b) => (a?.order || 0) - (b?.order || 0))
                                 .map((s, idx, all) => {
-                                    const isLoading = (idx == 0 || isFilled(all[idx - 1]?.id, s.type)) ?? true
+                                    const isLoading = (idx === 0 || isFilled(all[idx - 1]?.id, s?.type)) ?? true
                                     return <StatusMarker
                                         key={idx}
-                                        filled={isFilled(s.id, s.type)}
+                                        filled={isFilled(s?.id, s?.type)}
                                         loading={isLoading}
                                         isLast={idx === all.length - 1}
                                     >
-                                        {s.description}
+                                        {s?.description || ''}
                                     </StatusMarker>
                                 })}
                         </View>
@@ -306,7 +310,7 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                             gap: 12
                         }}>
                             <Image
-                                source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant.logo}` }}
+                                source={{ uri: `${APP_URL}/storage/images/restaurant/${restaurant?.logo || ''}` }}
                                 style={{
                                     width: 54, height: 54,
                                     borderRadius: 27,
@@ -314,10 +318,12 @@ const PendingOrder = ({ created_at, restaurant, status_id, status, delivery_lati
                                 }}
                             />
                             <View style={{ flex: 1 }}>
-                                <AppText weight="Bold" style={{ fontSize: 20, marginBottom: 6 }}>{delivery.name} {delivery.lastname}</AppText>
+                                <AppText weight="Bold" style={{ fontSize: 20, marginBottom: 6 }}>{delivery.name || ''} {delivery.lastname || ''}</AppText>
                                 <AppText style={{ fontSize: 14, color: '#A0A5BA' }}>Delivery</AppText>
                             </View>
-                            <TouchableOpacity onPress={() => Linking.openURL(`tel:${delivery.phone}`)}
+                            <TouchableOpacity onPress={() => {
+                                if (delivery?.phone) Linking.openURL(`tel:${delivery.phone}`)
+                            }}
                                 style={{
                                     backgroundColor: '#FF4D4F',
                                     padding: 12,

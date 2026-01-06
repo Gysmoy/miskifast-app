@@ -13,4 +13,4 @@ let HMSMap = null;
 
 const Map = HMSMap || MapView;
 
-export default Map;
+export default MapView;

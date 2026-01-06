@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, TouchableOpacity, RefreshControl, FlatList, Image } from 'react-native';
+import { View, ScrollView, TouchableOpacity, RefreshControl, FlatList, Image, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useCart } from '@/src/context/CartContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,8 @@ import AppText from "@/components/app-text"
 import SimpleCategory from '../../components/categories/simple-category';
 import SwitchMode from '../../components/ui/switch-mode';
 import AvailableOrder from '../../components/order/available-order';
-import OrdersRest from '@/src/data/OrdersRest'
+import OrdersRest from '@/src/data/OrdersRest';
+import * as Location from 'expo-location';
 
 import isotipo from '@/assets/images/isotipo.png'
 import { APP_NAME } from '../../constants/settings';
@@ -32,6 +33,23 @@ export default function HomeScreen() {
     };
 
     const onTakeOrder = async (orderId) => {
+        // Check if permission is already granted before requesting again
+        let { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            // Only request if not granted
+            const response = await Location.requestForegroundPermissionsAsync();
+            status = response.status;
+        }
+
+        if (status !== 'granted') {
+            Alert.alert(
+                'Ubicación requerida',
+                'No se puede tomar el pedido sin dar acceso a la ubicación.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
         setTaking(true);
         const result = await ordersRest.deliver(orderId);
         setTaking(false)

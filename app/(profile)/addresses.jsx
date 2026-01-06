@@ -1,35 +1,34 @@
 import AppText from "../../components/app-text";
 import { ScrollView, View, TouchableOpacity, Alert, RefreshControl, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { router } from "expo-router";
-import * as Device from 'expo-device';
-import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import AuthButton from "../../components/auth/auth-button";
 import AddressesRest from "../../src/data/AddressesRest";
-import AppMapView from "../../components/maps/app-map-view";
 import AppMarker from "../../components/maps/app-marker";
 import InputContainer from "../../components/forms/input-container";
 import Toast from "react-native-toast-message";
-import { APP_URL } from "../../constants/settings";
 import GMapsRest from "../../src/data/GMapsRest";
 import RadioContainer from "../../components/forms/radio-container";
 import AddressTags from "../../src/data/AddresTags";
 import AddressContainer from "../../components/profile/address-container";
 import AddressSkeleton from "../../components/skeleton/address-skeleton";
 
+import clientMarker from '@/assets/images/client-marker.png'
+import MapView from "react-native-maps";
+
 const addressesRest = new AddressesRest()
 const gMapsRest = new GMapsRest()
 const addressTags = new AddressTags()
 
 export default function AddressesScreen() {
-
+    const isMounted = useRef(true);
     const [addresses, setAddresses] = useState([])
     const [refreshing, setRefreshing] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [editingId, setEditingId] = useState(null)
-    const [loading, setLoading] = useState(true); // Skeleton state
+    const [loading, setLoading] = useState(true);
 
     const [region, setRegion] = useState({
         latitude: -13.15878,
@@ -51,11 +50,24 @@ export default function AddressesScreen() {
         is_default: false,
     });
 
+    useEffect(() => {
+        return () => { isMounted.current = false };
+    }, []);
+
     const getAddresses = async () => {
-        setLoading(true);
-        const result = await addressesRest.all()
-        setLoading(false);
-        setAddresses(result ?? [])
+        try {
+            setLoading(true);
+            const result = await addressesRest.all()
+            if (isMounted.current) {
+                setLoading(false);
+                setAddresses(result ?? [])
+            }
+        } catch {
+            if (isMounted.current) {
+                setLoading(false);
+                setAddresses([]);
+            }
+        }
     }
 
     useEffect(() => {
@@ -65,29 +77,41 @@ export default function AddressesScreen() {
     const onRefresh = async () => {
         setRefreshing(true)
         await getAddresses()
-        setRefreshing(false)
+        if (isMounted.current) setRefreshing(false)
     }
 
     const onMapPress = async (e) => {
-        const { latitude, longitude } = e.nativeEvent.coordinate;
-        setCoordinate({ latitude, longitude });
-        setForm(prev => ({
-            ...prev,
-            latitude: latitude.toString(),
-            longitude: longitude.toString(),
-        }));
+        try {
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            if (!isMounted.current) return;
+            setCoordinate({ latitude, longitude });
+            setForm(prev => ({
+                ...prev,
+                latitude: latitude.toString(),
+                longitude: longitude.toString(),
+            }));
 
-        const result = await gMapsRest.geocode(latitude, longitude)
-        if (!result) {
-            Toast.show({
-                type: 'error',
-                text1: 'No se pudo obtener la dirección',
-                text2: 'Intenta otro lugar o vuelve a intentar más tarde',
-                position: 'bottom',
-            });
-            return
+            const result = await gMapsRest.geocode(latitude, longitude)
+            if (!isMounted.current) return;
+            if (!result) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'No se pudo obtener la dirección',
+                    text2: 'Intenta otro lugar o vuelve a intentar más tarde',
+                    position: 'bottom',
+                });
+                return
+            }
+            setForm(prev => ({ ...prev, ...result }));
+        } catch {
+            if (isMounted.current) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error al obtener dirección',
+                    position: 'bottom',
+                });
+            }
         }
-        setForm(prev => ({ ...prev, ...result }));
     };
 
     const handleInputChange = (field, value) => {
@@ -118,7 +142,6 @@ export default function AddressesScreen() {
 
     const handleAddressForm = async (address = null) => {
         if (address) {
-            // Edit mode
             setEditingId(address.id);
             setForm({
                 name: address.name,
@@ -144,31 +167,9 @@ export default function AddressesScreen() {
                 longitudeDelta: 0.01,
             });
         } else {
-            // New mode
             setEditingId(null);
             resetForm();
         }
-
-        // if (Platform.OS === 'android') {
-        //     const manufacturer = Device.manufacturer || '';
-        //     const isHuawei = manufacturer.toLowerCase().includes('huawei');
-
-        //     if (isHuawei) {
-        //         Toast.show({
-        //             type: 'info',
-        //             text1: 'Abriendo versión web',
-        //             text2: 'Tu dispositivo no tiene los servicios de Google. Abriendo el mapa en el navegador...',
-        //             position: 'bottom',
-        //         });
-
-        //         const url = address
-        //             ? `${APP_URL}/app/add-address?location=${address.id}`
-        //             : `${APP_URL}/app/add-address`;
-        //         Linking.openURL(url);
-        //         return;
-        //     }
-        // }
-
         setIsEditing(true);
     };
 
@@ -180,7 +181,7 @@ export default function AddressesScreen() {
             { key: 'district', label: 'Distrito' },
             { key: 'street', label: 'Calle' },
             { key: 'number', label: 'Número' },
-            { key: 'tag', label: 'Etiqueta'}
+            { key: 'tag', label: 'Etiqueta' }
         ];
 
         const missing = requiredFields.filter(f => !form[f.key]).map(f => f.label);
@@ -197,11 +198,18 @@ export default function AddressesScreen() {
         const payload = { ...form };
         if (editingId) payload.id = editingId;
 
-        const result = await addressesRest.save(payload);
-        if (!result) return;
-        Alert.alert('Éxito', editingId ? 'Dirección actualizada' : 'Dirección guardada');
-        setIsEditing(false);
-        onRefresh();
+        try {
+            const result = await addressesRest.save(payload);
+            if (!result) return;
+            if (!isMounted.current) return;
+            Alert.alert('Éxito', editingId ? 'Dirección actualizada' : 'Dirección guardada');
+            setIsEditing(false);
+            onRefresh();
+        } catch {
+            if (isMounted.current) {
+                Alert.alert('Error', 'No se pudo guardar la dirección');
+            }
+        }
     };
 
     const handleDelete = (id) => {
@@ -213,14 +221,24 @@ export default function AddressesScreen() {
                 {
                     text: 'Aceptar',
                     onPress: async () => {
-                        const success = await addressesRest.delete(id);
-                        if (success) {
-                            Toast.show({
-                                type: 'success',
-                                text1: 'Dirección eliminada',
-                                position: 'bottom',
-                            });
-                            onRefresh();
+                        try {
+                            const success = await addressesRest.delete(id);
+                            if (success && isMounted.current) {
+                                Toast.show({
+                                    type: 'success',
+                                    text1: 'Dirección eliminada',
+                                    position: 'bottom',
+                                });
+                                onRefresh();
+                            }
+                        } catch {
+                            if (isMounted.current) {
+                                Toast.show({
+                                    type: 'error',
+                                    text1: 'Error al eliminar',
+                                    position: 'bottom',
+                                });
+                            }
                         }
                     },
                 },
@@ -229,38 +247,54 @@ export default function AddressesScreen() {
     };
 
     const handleLocationPress = async () => {
-        let { status } = await Location.getForegroundPermissionsAsync();
-        if (status !== 'granted') {
-            const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
-            if (newStatus !== 'granted') {
+        try {
+            let { status } = await Location.getForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+                if (newStatus !== 'granted') {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Permisos requeridos',
+                        text2: 'Debes otorgar permisos de ubicación para usar esta función.',
+                        position: 'top',
+                    });
+                    return;
+                }
+            }
+
+            let location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+                timeInterval: 5000,
+                distanceInterval: 10,
+            });
+            if (!isMounted.current) return;
+            const { latitude, longitude } = location.coords;
+            setCoordinate({ latitude, longitude });
+            setRegion({
+                latitude,
+                longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            });
+            setForm(prev => ({
+                ...prev,
+                latitude: latitude.toString(),
+                longitude: longitude.toString(),
+            }));
+
+            const result = await gMapsRest.geocode(latitude, longitude)
+            if (!isMounted.current) return;
+            if (!result) return;
+            setForm(prev => ({ ...prev, ...result }));
+        } catch {
+            if (isMounted.current) {
                 Toast.show({
                     type: 'error',
-                    text1: 'Permisos requeridos',
-                    text2: 'Debes otorgar permisos de ubicación para usar esta función.',
-                    position: 'top',
+                    text1: 'Error al obtener ubicación',
+                    position: 'bottom',
                 });
-                return;
             }
         }
-
-        let location = await Location.getCurrentPositionAsync({});
-        const { latitude, longitude } = location.coords;
-        setCoordinate({ latitude, longitude });
-        setRegion({
-            latitude,
-            longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-        });
-        setForm(prev => ({
-            ...prev,
-            latitude: latitude.toString(),
-            longitude: longitude.toString(),
-        }));
-
-        const result = await gMapsRest.geocode(latitude, longitude)
-        if (!result) return
-        setForm(prev => ({ ...prev, ...result }));
     };
 
     return (
@@ -268,7 +302,6 @@ export default function AddressesScreen() {
             {
                 isEditing
                     ? <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-                        {/* <View> */}
                         <View style={{ position: 'absolute', top: 24, left: 24, zIndex: 10 }}>
                             <TouchableOpacity
                                 onPress={() => setIsEditing(false)}
@@ -285,15 +318,20 @@ export default function AddressesScreen() {
                                 <Ionicons name="locate" size={24} color="#fff" />
                             </TouchableOpacity>
                         </View>
-                        <AppMapView
-                            style={{ flex: 1, aspectRatio: 75 / 59 }}
-                            region={region}
-                            onRegionChangeComplete={setRegion}
+                        <MapView
+                            style={{ width: '100%', aspectRatio: 75 / 59 }}
+                            customMapStyle={GMapsRest.cleanMapStyle()}
+                            // region={region}
+                            // onRegionChangeComplete={setRegion}
                             onPress={onMapPress}
                         >
-                            {coordinate && <AppMarker coordinate={coordinate} />}
-                        </AppMapView>
-                        {/* </View> */}
+                            {coordinate && <AppMarker
+                                latitude={coordinate.latitude}
+                                longitude={coordinate.longitude}
+                                color='#10c469'
+                                icon={clientMarker}
+                            />}
+                        </MapView>
 
                         <View style={{ padding: 24, gap: 24 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

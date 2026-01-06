@@ -1,6 +1,6 @@
 export const APP_NAME = 'MiskiFast'
 export const APP_CORRELATIVE = 'miskifast'
-export const APP_ENV = 'local'
+export const APP_ENV = 'production'
 
 export const APP_URL = 'https://miskyfast.com';
 // export const APP_URL = 'http://192.168.43.5:9000';
